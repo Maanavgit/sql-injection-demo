@@ -189,7 +189,7 @@ if ($method === "POST" && $path === "/login") {
             echo json_encode([
                 "success" => true,
                 "mode" => "secure",
-                "message" => "Login successful",
+                "message" => "Login success",
                 "user" => $user,
                 "query" => $query
             ]);
