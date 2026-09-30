@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>SQL Injection Demo</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>SQL Injection Demo</h1>
+
+    <p class="subtitle">
+        Educational local security laboratory
+    </p>
+
+    <div class="warning">
+        ⚠️ This application intentionally contains a vulnerable
+        SQL query for demonstration purposes.
+    </div>
+
+    <div class="card">
+
+        <h2>Login</h2>
+
+        <label>
+            Username
+        </label>
+
+        <input
+            type="text"
+            id="username"
+            placeholder="Enter username"
+        >
+
+        <label>
+            Password
+        </label>
+
+        <input
+            type="text"
+            id="password"
+            placeholder="Enter password"
+        >
+
+        <label>
+            Security Mode
+        </label>
+
+        <select id="mode">
+
+            <option value="vulnerable">
+                Vulnerable
+            </option>
+
+            <option value="secure">
+                Secure
+            </option>
+
+        </select>
+
+        <button onclick="login()">
+            Login
+        </button>
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>Result</h2>
+
+        <pre id="result">
+Waiting for request...
+        </pre>
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>How the Demo Works</h2>
+
+        <div class="flow">
+
+            <div>
+                Browser
+            </div>
+
+            <span>→</span>
+
+            <div>
+                PHP
+            </div>
+
+            <span>→</span>
+
+            <div>
+                MySQL
+            </div>
+
+        </div>
+
+        <p>
+            In vulnerable mode, user input becomes part of the SQL
+            statement. In secure mode, a prepared statement is used.
+        </p>
+
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+
+</html>

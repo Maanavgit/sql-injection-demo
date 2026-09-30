@@ -1,0 +1,32 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Environment/secrets
+.env
+.env.*
+
+# Git
+.git/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# PHP
+vendor/
+
+# Temporary files
+*.tmp
+*.swp
+
+# Docker
+docker-compose.override.yml
