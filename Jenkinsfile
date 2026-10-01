@@ -21,6 +21,19 @@ pipeline {
             'dockerhub-credentials'
     }
 
+     parameters {
+        choice(
+            name: 'SERVICE',
+            choices: [
+                'frontend',
+                'backend',
+                'db',
+                'all'
+            ],
+            description: 'Select which service to build and deploy'
+        )
+    }
+
     stages {
 
         /*
