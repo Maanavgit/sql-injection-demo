@@ -33,7 +33,7 @@ pipeline {
      */
     environment {
 
-        DOCKERHUB_USERNAME = 'YOUR_DOCKERHUB_USERNAME'
+        DOCKERHUB_USERNAME = 'maanav22'
 
         FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/sql-injection-demo-frontend"
 
