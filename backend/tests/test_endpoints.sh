@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BASE_URL="http://localhost:8080"
+BASE_URL="http://localhost:8084"
 
 echo "================================"
 echo "Testing GET /"
