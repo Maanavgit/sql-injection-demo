@@ -1,27 +1,20 @@
 pipeline {
 
+    /*
+     * Jenkins build agent
+     */
     agent {
         label 'docker-agent'
     }
 
-    environment {
 
-        DOCKERHUB_USERNAME = 'YOUR_DOCKERHUB_USERNAME'
+    /*
+     * Parameters shown in:
+     *
+     * Build with Parameters
+     */
+    parameters {
 
-        BACKEND_IMAGE =
-            "${DOCKERHUB_USERNAME}/sql-injection-demo-backend"
-
-        FRONTEND_IMAGE =
-            "${DOCKERHUB_USERNAME}/sql-injection-demo-frontend"
-
-        DB_IMAGE =
-            "${DOCKERHUB_USERNAME}/sql-injection-demo-db"
-
-        DOCKER_CREDENTIALS =
-            'dockerhub-credentials'
-    }
-
-     parameters {
         choice(
             name: 'SERVICE',
             choices: [
@@ -30,16 +23,35 @@ pipeline {
                 'db',
                 'all'
             ],
-            description: 'Select which service to build and deploy'
+            description: 'Select the service to build and push'
         )
     }
 
+
+    /*
+     * Environment variables
+     */
+    environment {
+
+        DOCKERHUB_USERNAME = 'YOUR_DOCKERHUB_USERNAME'
+
+        FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/sql-injection-demo-frontend"
+
+        BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/sql-injection-demo-backend"
+
+        DB_IMAGE = "${DOCKERHUB_USERNAME}/sql-injection-demo-db"
+
+        DOCKER_CREDENTIALS = 'dockerhub-credentials'
+    }
+
+
     stages {
 
+
         /*
-         * ==============================================
+         * =====================================================
          * 1. CHECKOUT
-         * ==============================================
+         * =====================================================
          */
 
         stage('Checkout Source Code') {
@@ -49,7 +61,10 @@ pipeline {
                 checkout scm
 
                 sh '''
-                    echo "Git commit:"
+                    echo "======================================"
+                    echo "Git Commit"
+                    echo "======================================"
+
                     git rev-parse HEAD
                 '''
             }
@@ -57,9 +72,9 @@ pipeline {
 
 
         /*
-         * ==============================================
-         * 2. TEST
-         * ==============================================
+         * =====================================================
+         * 2. RUN TESTS
+         * =====================================================
          */
 
         stage('Install Dependencies and Run Tests') {
@@ -69,88 +84,154 @@ pipeline {
                 sh '''
                     set -e
 
-                    echo "Starting application..."
+                    echo "======================================"
+                    echo "Starting application for testing"
+                    echo "======================================"
 
-                    docker compose up -d --build
+                    docker compose up -d db backend
 
                     echo "Waiting for backend..."
 
                     sleep 10
 
-                    echo "Running tests..."
+                    echo "======================================"
+                    echo "Running tests"
+                    echo "======================================"
 
                     chmod +x backend/tests/test_endpoints.sh
 
                     ./backend/tests/test_endpoints.sh
+
+                    echo "======================================"
+                    echo "Tests passed"
+                    echo "======================================"
                 '''
             }
         }
 
 
         /*
-         * ==============================================
-         * 3. BUILD
-         * ==============================================
+         * =====================================================
+         * 3. BUILD FRONTEND
+         * =====================================================
          */
 
-        stage('Build Docker Images') {
+        stage('Build Frontend') {
+
+            when {
+
+                expression {
+
+                    params.SERVICE == 'frontend' ||
+                    params.SERVICE == 'all'
+
+                }
+            }
 
             steps {
 
                 sh '''
                     set -e
 
-                    echo "Building backend..."
-
-                    docker build \
-                        -t ${BACKEND_IMAGE}:${GIT_COMMIT} \
-                        ./backend
-
-                    echo "Building frontend..."
+                    echo "Building frontend image..."
 
                     docker build \
                         -t ${FRONTEND_IMAGE}:${GIT_COMMIT} \
                         ./frontend
 
-                    echo "Building database..."
-
-                    docker build \
-                        -t ${DB_IMAGE}:${GIT_COMMIT} \
-                        ./database
+                    echo "Frontend image built successfully."
                 '''
             }
         }
 
 
         /*
-         * ==============================================
-         * 4. SHOW TAG
-         * ==============================================
+         * =====================================================
+         * 4. BUILD BACKEND
+         * =====================================================
          */
 
-        stage('Tag Images') {
+        stage('Build Backend') {
+
+            when {
+
+                expression {
+
+                    params.SERVICE == 'backend' ||
+                    params.SERVICE == 'all'
+
+                }
+            }
 
             steps {
 
                 sh '''
                     set -e
 
-                    echo "Git commit ID:"
-                    echo ${GIT_COMMIT}
+                    echo "Building backend image..."
 
-                    docker images | grep sql-injection-demo
+                    docker build \
+                        -t ${BACKEND_IMAGE}:${GIT_COMMIT} \
+                        ./backend
+
+                    echo "Backend image built successfully."
                 '''
             }
         }
 
 
         /*
-         * ==============================================
-         * 5. PUSH
-         * ==============================================
+         * =====================================================
+         * 5. BUILD DATABASE
+         * =====================================================
          */
 
-        stage('Push Images to Docker Hub') {
+        stage('Build Database') {
+
+            when {
+
+                expression {
+
+                    params.SERVICE == 'db' ||
+                    params.SERVICE == 'all'
+
+                }
+            }
+
+            steps {
+
+                sh '''
+                    set -e
+
+                    echo "Building database image..."
+
+                    docker build \
+                        -t ${DB_IMAGE}:${GIT_COMMIT} \
+                        ./database
+
+                    echo "Database image built successfully."
+                '''
+            }
+        }
+
+
+        /*
+         * =====================================================
+         * 6. PUSH FRONTEND
+         * =====================================================
+         */
+
+        stage('Push Frontend') {
+
+            when {
+
+                expression {
+
+                    params.SERVICE == 'frontend' ||
+                    params.SERVICE == 'all'
+
+                }
+            }
 
             steps {
 
@@ -165,49 +246,195 @@ pipeline {
                     sh '''
                         set -e
 
+                        echo "Logging into Docker Hub..."
+
                         echo "$DOCKER_PASSWORD" | \
                         docker login \
-                            -u "$DOCKER_USER" \
+                            --username "$DOCKER_USER" \
                             --password-stdin
 
-                        docker push ${BACKEND_IMAGE}:${GIT_COMMIT}
+                        echo "Pushing frontend..."
 
-                        docker push ${FRONTEND_IMAGE}:${GIT_COMMIT}
-
-                        docker push ${DB_IMAGE}:${GIT_COMMIT}
+                        docker push \
+                            ${FRONTEND_IMAGE}:${GIT_COMMIT}
 
                         docker logout
                     '''
                 }
             }
         }
+
+
+        /*
+         * =====================================================
+         * 7. PUSH BACKEND
+         * =====================================================
+         */
+
+        stage('Push Backend') {
+
+            when {
+
+                expression {
+
+                    params.SERVICE == 'backend' ||
+                    params.SERVICE == 'all'
+
+                }
+            }
+
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${DOCKER_CREDENTIALS}",
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+
+                    sh '''
+                        set -e
+
+                        echo "Logging into Docker Hub..."
+
+                        echo "$DOCKER_PASSWORD" | \
+                        docker login \
+                            --username "$DOCKER_USER" \
+                            --password-stdin
+
+                        echo "Pushing backend..."
+
+                        docker push \
+                            ${BACKEND_IMAGE}:${GIT_COMMIT}
+
+                        docker logout
+                    '''
+                }
+            }
+        }
+
+
+        /*
+         * =====================================================
+         * 8. PUSH DATABASE
+         * =====================================================
+         */
+
+        stage('Push Database') {
+
+            when {
+
+                expression {
+
+                    params.SERVICE == 'db' ||
+                    params.SERVICE == 'all'
+
+                }
+            }
+
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${DOCKER_CREDENTIALS}",
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+
+                    sh '''
+                        set -e
+
+                        echo "Logging into Docker Hub..."
+
+                        echo "$DOCKER_PASSWORD" | \
+                        docker login \
+                            --username "$DOCKER_USER" \
+                            --password-stdin
+
+                        echo "Pushing database..."
+
+                        docker push \
+                            ${DB_IMAGE}:${GIT_COMMIT}
+
+                        docker logout
+                    '''
+                }
+            }
+        }
+
+
+        /*
+         * =====================================================
+         * 9. SHOW BUILD INFORMATION
+         * =====================================================
+         */
+
+        stage('Build Information') {
+
+            steps {
+
+                sh '''
+                    echo "======================================"
+                    echo "BUILD INFORMATION"
+                    echo "======================================"
+
+                    echo "Selected Service:"
+                    echo "${SERVICE}"
+
+                    echo ""
+
+                    echo "Git Commit:"
+                    echo "${GIT_COMMIT}"
+
+                    echo ""
+
+                    echo "Images:"
+                    docker images | grep sql-injection-demo || true
+                '''
+            }
+        }
     }
 
 
     /*
-     * ==============================================
-     * CLEANUP
-     * ==============================================
+     * =========================================================
+     * POST ACTIONS
+     * =========================================================
      */
 
     post {
 
         always {
 
+            echo "Cleaning up test containers..."
+
             sh '''
                 docker compose down || true
             '''
-
         }
+
 
         success {
 
-            echo 'Pipeline completed successfully.'
+            echo "======================================"
+            echo "PIPELINE SUCCESS"
+            echo "======================================"
+
+            echo "Service: ${SERVICE}"
+
+            echo "Git Commit: ${GIT_COMMIT}"
         }
+
 
         failure {
 
-            echo 'Pipeline failed. Images were not pushed if failure occurred before the Push stage.'
+            echo "======================================"
+            echo "PIPELINE FAILED"
+            echo "======================================"
+
+            echo "If tests failed, Docker images were not pushed."
         }
     }
 }
